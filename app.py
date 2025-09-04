@@ -3,7 +3,7 @@ import pandas as pd
 import numpy as np
 import pytesseract
 from PIL import Image
-from googletrans import Translator
+from deep_translator import GoogleTranslator
 from transformers import pipeline
 from sklearn.linear_model import LogisticRegression
 from sklearn.preprocessing import StandardScaler
@@ -19,13 +19,12 @@ st.write("Smart, multilingual, and designed for rural & semi-urban India 🚀")
 # --------------------------
 # 1. LANGUAGE TRANSLATOR
 # --------------------------
-translator = Translator()
-
 def translate_text(text, dest_lang="en"):
     try:
-        return translator.translate(text, dest=dest_lang).text
+        return GoogleTranslator(source="auto", target=dest_lang).translate(text)
     except:
         return text  # fallback if no internet
+
 
 lang = st.selectbox("🌍 Select Language", ["English", "Hindi", "Tamil", "Telugu"])
 lang_codes = {"English": "en", "Hindi": "hi", "Tamil": "ta", "Telugu": "te"}
