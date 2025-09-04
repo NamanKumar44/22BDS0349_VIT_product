@@ -7,3 +7,4 @@ pytesseract
 Pillow
 transformers
 torch
+cgi-tools
