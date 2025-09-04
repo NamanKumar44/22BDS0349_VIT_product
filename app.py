@@ -118,9 +118,10 @@ def generate_pdf(data: dict) -> bytes:
     pdf.cell(200, 10, "Loan Application Summary", ln=True, align="C")
     for k,v in data.items():
         pdf.cell(0, 10, f"{k}: {v}", ln=True)
-    buf = io.BytesIO()
-    pdf.output(buf)
-    return buf.getvalue()
+
+    # Return as bytes instead of saving to file
+    return pdf.output(dest="S").encode("latin-1")
+
 
 # ------------------------------
 # UI
