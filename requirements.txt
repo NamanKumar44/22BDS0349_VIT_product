@@ -1,8 +1,18 @@
+# Core App
 streamlit==1.35.0
+
+# Data Handling
 pandas==2.2.2
 numpy==1.26.4
+scikit-learn==1.5.2
+
+# OCR & Image
 pytesseract==0.3.10
 Pillow==10.3.0
-deep-translator==1.11.4
 opencv-python-headless==4.10.0.84
+
+# Translation
+deep-translator==1.11.4
+
+# PDF Export
 fpdf==1.7.2
