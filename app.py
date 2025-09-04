@@ -1,7 +1,6 @@
 import io
 import re
 import uuid
-import base64
 from datetime import datetime
 
 import numpy as np
@@ -17,7 +16,7 @@ from fpdf import FPDF
 # ------------------------------
 st.set_page_config(page_title="AI Loan Agent", page_icon="📱", layout="centered")
 
-APP_VERSION = "2.0"
+APP_VERSION = "2.1"
 LANGUAGES = ["English", "Hindi", "Tamil", "Telugu", "Bengali", "Marathi", "Kannada"]
 
 # ------------------------------
@@ -38,18 +37,31 @@ AADHAAR_REGEX = r"\b(\d{4}\s?\d{4}\s?\d{4})\b"
 PAN_REGEX = r"\b([A-Z]{5}\d{4}[A-Z])\b"
 PAYSLIP_HINTS = ["pay slip", "salary", "net pay", "gross pay", "employee id", "earnings"]
 
+AADHAAR_KEYWORDS = ["government of india", "unique identification authority"]
+
 def run_ocr(image: Image.Image) -> str:
     pil = ImageOps.exif_transpose(image.convert("L"))
     return pytesseract.image_to_string(pil, lang="eng")
 
 def detect_doc_type(ocr_text: str):
-    text = ocr_text.lower()
-    if re.search(AADHAAR_REGEX, ocr_text.replace(" ", "")) or "aadhaar" in text:
-        return "aadhaar"
-    if re.search(PAN_REGEX, ocr_text) or "income tax" in text:
+    text = ocr_text.replace(" ", "")
+    lower_text = ocr_text.lower()
+
+    # Aadhaar: 12 digits + must mention Govt keywords
+    aadhaar_digits = re.sub(r"\D", "", text)
+    if re.fullmatch(r"\d{12}", aadhaar_digits):
+        if any(k in lower_text for k in AADHAAR_KEYWORDS):
+            return "aadhaar"
+
+    # PAN: must match regex (5 letters + 4 digits + 1 letter)
+    if re.search(r"[A-Z]{5}[0-9]{4}[A-Z]", ocr_text.upper()):
         return "pan"
-    if any(k in text for k in PAYSLIP_HINTS):
+
+    # Pay slip: must contain salary terms
+    if any(k in lower_text for k in PAYSLIP_HINTS):
         return "payslip"
+
+    # Everything else rejected
     return "unknown"
 
 # ------------------------------
@@ -118,11 +130,7 @@ def generate_pdf(data: dict) -> bytes:
     pdf.cell(200, 10, "Loan Application Summary", ln=True, align="C")
     for k,v in data.items():
         pdf.cell(0, 10, f"{k}: {v}", ln=True)
-
-    # Return as bytes instead of saving to file
     return pdf.output(dest="S").encode("latin-1")
-
-
 
 # ------------------------------
 # UI
@@ -149,7 +157,7 @@ if st.button(t("Run Underwriting", lang), disabled=not consent):
         st.error(t("Please provide consent", lang))
         st.stop()
 
-    doc_ok, quality, tips = False, 0, []
+    doc_ok, quality, tips, doc_type = False, 0, [], "unknown"
     if id_file:
         id_img = Image.open(id_file)
         st.image(id_img, caption=t("Uploaded ID", lang))
@@ -162,6 +170,13 @@ if st.button(t("Run Underwriting", lang), disabled=not consent):
         doc_ok = doc_type in ["pan","aadhaar"] and quality > 0.5
     else:
         st.warning(t("Upload a valid government ID", lang))
+
+    # Income proof gives small boost but not valid ID replacement
+    if pay_file:
+        pay_img = Image.open(pay_file)
+        pay_text = run_ocr(pay_img)
+        if any(k in pay_text.lower() for k in PAYSLIP_HINTS):
+            st.success(t("Income proof detected", lang))
 
     face_ok = False
     if selfie:
@@ -177,6 +192,7 @@ if st.button(t("Run Underwriting", lang), disabled=not consent):
         "Risk Score": f"{int(score*100)}",
         "Monthly Income": income,
         "Requested Loan": loan,
+        "Doc Type": doc_type,
         "Doc Valid": doc_ok,
         "Face Detected": face_ok,
         "Time": datetime.utcnow().isoformat()
