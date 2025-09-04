@@ -1,6 +1,5 @@
 import io
 import re
-import uuid
 from datetime import datetime
 
 import numpy as np
@@ -16,7 +15,7 @@ from fpdf import FPDF
 # ------------------------------
 st.set_page_config(page_title="AI Loan Agent", page_icon="📱", layout="centered")
 
-APP_VERSION = "2.1"
+APP_VERSION = "2.2"
 LANGUAGES = ["English", "Hindi", "Tamil", "Telugu", "Bengali", "Marathi", "Kannada"]
 
 # ------------------------------
@@ -33,11 +32,7 @@ def t(text: str, lang: str) -> str:
 # ------------------------------
 # OCR & Doc Validation
 # ------------------------------
-AADHAAR_REGEX = r"\b(\d{4}\s?\d{4}\s?\d{4})\b"
-PAN_REGEX = r"\b([A-Z]{5}\d{4}[A-Z])\b"
 PAYSLIP_HINTS = ["pay slip", "salary", "net pay", "gross pay", "employee id", "earnings"]
-
-AADHAAR_KEYWORDS = ["government of india", "unique identification authority"]
 
 def run_ocr(image: Image.Image) -> str:
     pil = ImageOps.exif_transpose(image.convert("L"))
@@ -47,21 +42,25 @@ def detect_doc_type(ocr_text: str):
     text = ocr_text.replace(" ", "")
     lower_text = ocr_text.lower()
 
-    # Aadhaar: 12 digits + must mention Govt keywords
+    # Aadhaar: must be 12 digits + Aadhaar keywords
     aadhaar_digits = re.sub(r"\D", "", text)
-    if re.fullmatch(r"\d{12}", aadhaar_digits):
-        if any(k in lower_text for k in AADHAAR_KEYWORDS):
+    if len(aadhaar_digits) == 12:
+        if ("aadhaar" in lower_text or 
+            "unique identification authority" in lower_text or 
+            "government of india" in lower_text):
             return "aadhaar"
 
-    # PAN: must match regex (5 letters + 4 digits + 1 letter)
-    if re.search(r"[A-Z]{5}[0-9]{4}[A-Z]", ocr_text.upper()):
-        return "pan"
+    # PAN: strict regex + must mention PAN keywords
+    if re.search(r"^[A-Z]{5}[0-9]{4}[A-Z]$", text):
+        if "income tax" in lower_text or "permanent account number" in lower_text:
+            return "pan"
 
-    # Pay slip: must contain salary terms
-    if any(k in lower_text for k in PAYSLIP_HINTS):
+    # Pay slip: must contain at least 2 salary terms
+    matches = [k for k in PAYSLIP_HINTS if k in lower_text]
+    if len(matches) >= 2:
         return "payslip"
 
-    # Everything else rejected
+    # Everything else → reject
     return "unknown"
 
 # ------------------------------
@@ -167,6 +166,7 @@ if st.button(t("Run Underwriting", lang), disabled=not consent):
         quality, tips = quality_metrics(id_img)
         st.write(t("Doc Type:", lang), doc_type, " | ", t("Quality:", lang), f"{int(quality*100)}%")
         if tips: st.info(" | ".join(tip for tip in tips))
+        # ✅ Only Aadhaar or PAN count as valid doc
         doc_ok = doc_type in ["pan","aadhaar"] and quality > 0.5
     else:
         st.warning(t("Upload a valid government ID", lang))
