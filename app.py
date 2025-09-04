@@ -183,9 +183,16 @@ if st.button(t("Run Underwriting", lang), disabled=not consent):
         face_ok = face_present(Image.open(selfie))
         st.write(t("Selfie Detected:", lang), face_ok)
 
-    score, decision = risk_score(income, loan, doc_ok, quality, face_ok)
-    st.progress(score)
-    st.subheader(explain(decision, lang))
+    # 🚨 Hard requirement: must have valid government ID
+    if not doc_ok:
+        decision = "reject"
+        score = 0
+        st.error(t("❌ Rejected — Valid PAN or Aadhaar required.", lang))
+    else:
+        score, decision = risk_score(income, loan, doc_ok, quality, face_ok)
+        st.progress(score)
+        st.subheader(explain(decision, lang))
+
 
     summary = {
         "Decision": decision.upper(),
