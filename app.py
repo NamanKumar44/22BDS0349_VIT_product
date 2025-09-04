@@ -123,6 +123,7 @@ def generate_pdf(data: dict) -> bytes:
     return pdf.output(dest="S").encode("latin-1")
 
 
+
 # ------------------------------
 # UI
 # ------------------------------
