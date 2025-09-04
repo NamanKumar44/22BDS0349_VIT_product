@@ -2,7 +2,7 @@ streamlit==1.35.0
 scikit-learn
 pandas
 numpy
-googletrans==4.0.0rc1
+deep-translator
 pytesseract
 Pillow
 transformers
