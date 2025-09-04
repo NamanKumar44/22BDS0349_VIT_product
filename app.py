@@ -50,10 +50,11 @@ def detect_doc_type(ocr_text: str):
             "government of india" in lower_text):
             return "aadhaar"
 
-    # PAN: strict regex + must mention PAN keywords
-    if re.search(r"^[A-Z]{5}[0-9]{4}[A-Z]$", text):
+    # PAN: flexible match inside text + PAN keywords
+    if re.search(r"[A-Z]{5}[0-9]{4}[A-Z]", ocr_text.upper()):
         if "income tax" in lower_text or "permanent account number" in lower_text:
             return "pan"
+
 
     # Pay slip: must contain at least 2 salary terms
     matches = [k for k in PAYSLIP_HINTS if k in lower_text]
